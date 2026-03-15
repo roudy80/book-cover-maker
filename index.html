@@ -6,7 +6,7 @@
 <title>Cover Maker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=IM+Fell+English:ital@0;1&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Oswald:wght@400;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=IM+Fell+English:ital@0;1&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Oswald:wght@400;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400;700&family=Exo+2:ital,wght@0,300;0,400;0,700;0,900;1,400&family=Abril+Fatface&family=Spectral:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -207,6 +207,17 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
         <div id="dropLabel">Tap to upload image<br><small>JPG or PNG · drag &amp; drop also works</small></div>
       </div>
       <input type="file" id="fileIn" accept="image/*" style="display:none" onchange="handleFile(this)">
+      <div class="row" style="align-items:flex-end">
+        <div class="field" style="flex:1">
+          <label>Or paste image URL</label>
+          <input type="text" id="urlInput" placeholder="https://..." oninput="" style="font-size:0.75rem">
+        </div>
+        <div class="field" style="flex:0 0 auto">
+          <label>&nbsp;</label>
+          <button class="btn btn-secondary" onclick="loadFromUrl()" style="padding:7px 10px;font-size:0.8rem">Load</button>
+        </div>
+      </div>
+      <div id="urlError" style="font-size:0.7rem;color:#e57373;margin-bottom:8px;display:none">CORS blocked — download the image and upload above instead.</div>
       <div class="field">
         <label>Image Framing</label>
         <select onchange="state.bgPos=this.value;render()">
@@ -270,6 +281,26 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
     <div class="tab-content" id="tab-export">
       <div class="field"><label>Format</label></div>
       <div class="format-grid" id="formatGrid"></div>
+      <div id="wrapOptions" style="display:none">
+        <div class="row">
+          <div class="field">
+            <label>Page Count</label>
+            <input type="number" id="pageCount" value="300" min="24" max="1200">
+          </div>
+          <div class="field">
+            <label>Paper Type</label>
+            <select id="paperType">
+              <option value="white">White 60#</option>
+              <option value="cream">Cream 60#</option>
+              <option value="color">Color</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label id="spineLabel">Spine width: calculating…</label>
+        </div>
+      </div>
+      <script>document.getElementById('pageCount').addEventListener('input',updateSpineLabel);document.getElementById('paperType').addEventListener('change',updateSpineLabel);</script>
       <button class="btn btn-primary btn-full" onclick="exportCover()">⬇ Download Cover PNG</button>
       <p style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:8px;">Full resolution · ready for KDP upload</p>
     </div>
@@ -291,82 +322,216 @@ const GENRES = {
   historical: {
     name: 'Historical Fiction',
     sub: 'Napoleonic Era',
+    spineColor: '#0d1a2e',
     elStyles: {
-      series:   { font:'IM Fell English', weight:'400', style:'italic',  color:'#D4B878', size:0.027, spacing:'0.1em',  sy:0.10 },
-      title:    { font:'Cinzel',          weight:'700', style:'normal',  color:'#C9A84C', size:0.080, spacing:'0.15em', sy:0.18 },
-      subtitle: { font:'IM Fell English', weight:'400', style:'italic',  color:'#E8DCC8', size:0.033, spacing:'0.04em', sy:0.28 },
-      author:   { font:'Cinzel',          weight:'400', style:'normal',  color:'#C9A84C', size:0.036, spacing:'0.2em',  sy:0.90 },
+      series:   { font:'IM Fell English',  weight:'400', style:'italic', color:'#D4B878', size:0.027, spacing:'0.1em',  sy:0.10 },
+      title:    { font:'Cinzel',           weight:'700', style:'normal', color:'#C9A84C', size:0.080, spacing:'0.15em', sy:0.18 },
+      subtitle: { font:'IM Fell English',  weight:'400', style:'italic', color:'#E8DCC8', size:0.033, spacing:'0.04em', sy:0.28 },
+      author:   { font:'Cinzel',           weight:'400', style:'normal', color:'#C9A84C', size:0.036, spacing:'0.2em',  sy:0.90 },
     },
     shadow: { color:'rgba(0,0,0,0.88)', blur:9,  x:2, y:3 },
-    stroke: { color:null, width:0 },
-    overlay: 30,
+    stroke: { color:null, width:0 }, overlay: 30,
   },
   christian: {
     name: 'Christian',
     sub: 'Faith & Spiritual',
+    spineColor: '#1a1208',
     elStyles: {
       series:   { font:'Cormorant Garamond', weight:'400', style:'italic', color:'#C9B99A', size:0.025, spacing:'0.1em',  sy:0.10 },
       title:    { font:'Cormorant Garamond', weight:'600', style:'normal', color:'#FFFFFF', size:0.076, spacing:'0.06em', sy:0.18 },
       subtitle: { font:'Cormorant Garamond', weight:'400', style:'italic', color:'#E0D4C0', size:0.031, spacing:'0.04em', sy:0.28 },
-      author:   { font:'Libre Baskerville', weight:'400', style:'normal', color:'#C9B99A', size:0.033, spacing:'0.1em',  sy:0.89 },
+      author:   { font:'Libre Baskerville',  weight:'400', style:'normal', color:'#C9B99A', size:0.033, spacing:'0.1em',  sy:0.89 },
     },
-    shadow: { color:'rgba(0,0,0,0.65)', blur:7,  x:1, y:2 },
-    stroke: { color:null, width:0 },
-    overlay: 22,
+    shadow: { color:'rgba(0,0,0,0.65)', blur:7, x:1, y:2 },
+    stroke: { color:null, width:0 }, overlay: 22,
   },
   romance: {
     name: 'Romance',
     sub: 'Contemporary & Historical',
+    spineColor: '#1a0810',
     elStyles: {
       series:   { font:'Playfair Display', weight:'400', style:'italic', color:'#E8C4A0', size:0.025, spacing:'0.08em', sy:0.08 },
       title:    { font:'Playfair Display', weight:'700', style:'italic', color:'#F5E8D8', size:0.086, spacing:'0.03em', sy:0.14 },
       subtitle: { font:'Playfair Display', weight:'400', style:'italic', color:'#E8C4A0', size:0.032, spacing:'0.04em', sy:0.25 },
       author:   { font:'Playfair Display', weight:'400', style:'normal', color:'#F5E8D8', size:0.034, spacing:'0.15em', sy:0.91 },
     },
-    shadow: { color:'rgba(50,5,5,0.8)',   blur:12, x:2, y:2 },
-    stroke: { color:null, width:0 },
-    overlay: 24,
+    shadow: { color:'rgba(50,5,5,0.8)', blur:12, x:2, y:2 },
+    stroke: { color:null, width:0 }, overlay: 24,
   },
   nonfiction: {
     name: 'Non-Fiction / History',
     sub: 'Narrative & Analytical',
+    spineColor: '#111111',
     elStyles: {
       series:   { font:'Oswald',       weight:'400', style:'normal', color:'#BBBBBB', size:0.024, spacing:'0.1em',  sy:0.09 },
       title:    { font:'Oswald',       weight:'700', style:'normal', color:'#FFFFFF', size:0.090, spacing:'0.08em', sy:0.15 },
       subtitle: { font:'Merriweather', weight:'400', style:'normal', color:'#CCCCCC', size:0.030, spacing:'0.02em', sy:0.27 },
       author:   { font:'Merriweather', weight:'400', style:'normal', color:'#FFFFFF', size:0.031, spacing:'0.08em', sy:0.90 },
     },
-    shadow: { color:'rgba(0,0,0,0.92)', blur:4,  x:3, y:3 },
-    stroke: { color:null, width:0 },
-    overlay: 42,
+    shadow: { color:'rgba(0,0,0,0.92)', blur:4, x:3, y:3 },
+    stroke: { color:null, width:0 }, overlay: 42,
   },
   constitution: {
     name: 'Constitution / Founding',
     sub: 'American History & Law',
+    spineColor: '#14100a',
     elStyles: {
-      series:   { font:'EB Garamond',        weight:'400', style:'italic', color:'#8B7355', size:0.024, spacing:'0.1em',  sy:0.10 },
-      title:    { font:'Cinzel Decorative',  weight:'700', style:'normal', color:'#C9A84C', size:0.066, spacing:'0.06em', sy:0.18 },
-      subtitle: { font:'EB Garamond',        weight:'400', style:'italic', color:'#8B7355', size:0.029, spacing:'0.04em', sy:0.27 },
-      author:   { font:'EB Garamond',        weight:'400', style:'normal', color:'#8B7355', size:0.030, spacing:'0.15em', sy:0.90 },
+      series:   { font:'EB Garamond',       weight:'400', style:'italic', color:'#8B7355', size:0.024, spacing:'0.1em',  sy:0.10 },
+      title:    { font:'Cinzel Decorative', weight:'700', style:'normal', color:'#C9A84C', size:0.066, spacing:'0.06em', sy:0.18 },
+      subtitle: { font:'EB Garamond',       weight:'400', style:'italic', color:'#8B7355', size:0.029, spacing:'0.04em', sy:0.27 },
+      author:   { font:'EB Garamond',       weight:'400', style:'normal', color:'#8B7355', size:0.030, spacing:'0.15em', sy:0.90 },
     },
-    shadow: { color:'rgba(0,0,0,0.72)', blur:6,  x:2, y:2 },
-    stroke: { color:'#6B5B2E', width:1 },
-    overlay: 35,
+    shadow: { color:'rgba(0,0,0,0.72)', blur:6, x:2, y:2 },
+    stroke: { color:'#6B5B2E', width:1 }, overlay: 35,
+  },
+  thriller: {
+    name: 'Thriller / Suspense',
+    sub: 'Crime, Espionage, Psychological',
+    spineColor: '#0a0a0a',
+    elStyles: {
+      series:   { font:'Oswald',       weight:'400', style:'normal', color:'#CC2222', size:0.024, spacing:'0.15em', sy:0.09 },
+      title:    { font:'Abril Fatface', weight:'400', style:'normal', color:'#FFFFFF', size:0.088, spacing:'0.02em', sy:0.16 },
+      subtitle: { font:'Oswald',       weight:'400', style:'normal', color:'#AAAAAA', size:0.030, spacing:'0.08em', sy:0.27 },
+      author:   { font:'Oswald',       weight:'400', style:'normal', color:'#CCCCCC', size:0.032, spacing:'0.15em', sy:0.91 },
+    },
+    shadow: { color:'rgba(180,0,0,0.5)', blur:14, x:0, y:0 },
+    stroke: { color:null, width:0 }, overlay: 48,
+  },
+  fantasy: {
+    name: 'Fantasy',
+    sub: 'Epic & Dark Fantasy',
+    spineColor: '#0d0818',
+    elStyles: {
+      series:   { font:'Cinzel Decorative', weight:'400', style:'normal', color:'#A07CC5', size:0.024, spacing:'0.12em', sy:0.09 },
+      title:    { font:'Cinzel Decorative', weight:'700', style:'normal', color:'#E8D5A3', size:0.072, spacing:'0.06em', sy:0.17 },
+      subtitle: { font:'Cormorant Garamond',weight:'400', style:'italic', color:'#C4A8E0', size:0.030, spacing:'0.04em', sy:0.27 },
+      author:   { font:'Cinzel',           weight:'400', style:'normal', color:'#E8D5A3', size:0.033, spacing:'0.18em', sy:0.90 },
+    },
+    shadow: { color:'rgba(80,0,120,0.7)', blur:12, x:0, y:2 },
+    stroke: { color:'#4a2070', width:1 }, overlay: 32,
+  },
+  scifi: {
+    name: 'Science Fiction',
+    sub: 'Space Opera, Cyberpunk, Hard SF',
+    spineColor: '#040d1a',
+    elStyles: {
+      series:   { font:'Exo 2',  weight:'300', style:'normal', color:'#66CCFF', size:0.023, spacing:'0.2em',  sy:0.09 },
+      title:    { font:'Exo 2',  weight:'900', style:'normal', color:'#FFFFFF', size:0.082, spacing:'0.06em', sy:0.16 },
+      subtitle: { font:'Exo 2',  weight:'300', style:'normal', color:'#88DDFF', size:0.028, spacing:'0.1em',  sy:0.26 },
+      author:   { font:'Exo 2',  weight:'400', style:'normal', color:'#AADDFF', size:0.030, spacing:'0.2em',  sy:0.91 },
+    },
+    shadow: { color:'rgba(0,100,200,0.6)', blur:14, x:0, y:0 },
+    stroke: { color:null, width:0 }, overlay: 40,
+  },
+  mystery: {
+    name: 'Mystery / Crime',
+    sub: 'Detective, Cozy, Noir',
+    spineColor: '#0a0c10',
+    elStyles: {
+      series:   { font:'IM Fell English', weight:'400', style:'italic', color:'#9EAABB', size:0.024, spacing:'0.08em', sy:0.09 },
+      title:    { font:'Spectral',        weight:'700', style:'italic', color:'#E8E0D0', size:0.082, spacing:'0.02em', sy:0.17 },
+      subtitle: { font:'IM Fell English', weight:'400', style:'italic', color:'#AABBCC', size:0.030, spacing:'0.03em', sy:0.27 },
+      author:   { font:'Spectral',        weight:'400', style:'normal', color:'#C8C0B0', size:0.032, spacing:'0.12em', sy:0.90 },
+    },
+    shadow: { color:'rgba(0,0,0,0.95)', blur:10, x:2, y:3 },
+    stroke: { color:null, width:0 }, overlay: 44,
+  },
+  western: {
+    name: 'Western / Frontier',
+    sub: 'Cowboys, Frontier, Americana',
+    spineColor: '#1a0f06',
+    elStyles: {
+      series:   { font:'Playfair Display', weight:'400', style:'italic', color:'#C4956A', size:0.024, spacing:'0.08em', sy:0.10 },
+      title:    { font:'Playfair Display', weight:'900', style:'normal', color:'#F0D9A0', size:0.082, spacing:'0.04em', sy:0.18 },
+      subtitle: { font:'Playfair Display', weight:'400', style:'italic', color:'#C4956A', size:0.030, spacing:'0.03em', sy:0.28 },
+      author:   { font:'Libre Baskerville',weight:'400', style:'normal', color:'#E0C880', size:0.032, spacing:'0.12em', sy:0.90 },
+    },
+    shadow: { color:'rgba(30,10,0,0.85)', blur:8, x:2, y:3 },
+    stroke: { color:null, width:0 }, overlay: 35,
+  },
+  literary: {
+    name: 'Literary Fiction',
+    sub: 'Contemporary & Award',
+    spineColor: '#0e0e0e',
+    elStyles: {
+      series:   { font:'EB Garamond',       weight:'400', style:'italic', color:'#999999', size:0.022, spacing:'0.08em', sy:0.10 },
+      title:    { font:'Cormorant Garamond', weight:'300', style:'normal', color:'#EEEEEE', size:0.090, spacing:'0.02em', sy:0.18 },
+      subtitle: { font:'EB Garamond',       weight:'400', style:'italic', color:'#AAAAAA', size:0.028, spacing:'0.02em', sy:0.28 },
+      author:   { font:'EB Garamond',       weight:'400', style:'normal', color:'#CCCCCC', size:0.030, spacing:'0.15em', sy:0.90 },
+    },
+    shadow: { color:'rgba(0,0,0,0.8)', blur:5, x:1, y:1 },
+    stroke: { color:null, width:0 }, overlay: 38,
+  },
+  ya: {
+    name: 'Young Adult',
+    sub: 'Teen Fiction, Coming-of-Age',
+    spineColor: '#160820',
+    elStyles: {
+      series:   { font:'Playfair Display', weight:'400', style:'italic', color:'#FF99CC', size:0.025, spacing:'0.08em', sy:0.09 },
+      title:    { font:'Playfair Display', weight:'900', style:'italic', color:'#FFFFFF', size:0.090, spacing:'0.01em', sy:0.15 },
+      subtitle: { font:'Playfair Display', weight:'400', style:'italic', color:'#DDAAFF', size:0.030, spacing:'0.03em', sy:0.25 },
+      author:   { font:'Playfair Display', weight:'400', style:'normal', color:'#FFBBDD', size:0.032, spacing:'0.12em', sy:0.91 },
+    },
+    shadow: { color:'rgba(100,0,150,0.6)', blur:14, x:0, y:2 },
+    stroke: { color:null, width:0 }, overlay: 28,
+  },
+  memoir: {
+    name: 'Memoir / Biography',
+    sub: 'Personal Story, True Life',
+    spineColor: '#181210',
+    elStyles: {
+      series:   { font:'Cormorant Garamond', weight:'400', style:'italic', color:'#B0A090', size:0.023, spacing:'0.08em', sy:0.10 },
+      title:    { font:'Cormorant Garamond', weight:'600', style:'italic', color:'#F0E8D8', size:0.082, spacing:'0.02em', sy:0.18 },
+      subtitle: { font:'Cormorant Garamond', weight:'400', style:'italic', color:'#C8B8A0', size:0.030, spacing:'0.03em', sy:0.28 },
+      author:   { font:'Libre Baskerville',  weight:'400', style:'normal', color:'#D8C8B0', size:0.030, spacing:'0.1em',  sy:0.89 },
+    },
+    shadow: { color:'rgba(0,0,0,0.7)', blur:7, x:1, y:2 },
+    stroke: { color:null, width:0 }, overlay: 26,
+  },
+  selfhelp: {
+    name: 'Self-Help / Business',
+    sub: 'Personal Growth, Leadership',
+    spineColor: '#0a1020',
+    elStyles: {
+      series:   { font:'Oswald',       weight:'400', style:'normal', color:'#88AACC', size:0.022, spacing:'0.15em', sy:0.09 },
+      title:    { font:'Oswald',       weight:'700', style:'normal', color:'#FFFFFF', size:0.086, spacing:'0.04em', sy:0.15 },
+      subtitle: { font:'Merriweather', weight:'400', style:'normal', color:'#BBCCDD', size:0.028, spacing:'0.01em', sy:0.26 },
+      author:   { font:'Merriweather', weight:'400', style:'normal', color:'#FFFFFF', size:0.030, spacing:'0.08em', sy:0.90 },
+    },
+    shadow: { color:'rgba(0,20,60,0.8)', blur:6, x:2, y:2 },
+    stroke: { color:null, width:0 }, overlay: 40,
+  },
+  military: {
+    name: 'Military / War',
+    sub: 'Action, Strategy, WWII',
+    spineColor: '#0d1008',
+    elStyles: {
+      series:   { font:'Oswald', weight:'400', style:'normal', color:'#8A9A6A', size:0.023, spacing:'0.18em', sy:0.09 },
+      title:    { font:'Cinzel', weight:'900', style:'normal', color:'#E8E0C8', size:0.082, spacing:'0.12em', sy:0.16 },
+      subtitle: { font:'Oswald', weight:'400', style:'normal', color:'#AABB88', size:0.028, spacing:'0.06em', sy:0.26 },
+      author:   { font:'Cinzel', weight:'400', style:'normal', color:'#C8C0A8', size:0.030, spacing:'0.18em', sy:0.90 },
+    },
+    shadow: { color:'rgba(0,0,0,0.92)', blur:6, x:3, y:3 },
+    stroke: { color:null, width:0 }, overlay: 45,
   },
 };
 
 const ALL_FONTS = [
-  'Cinzel','Cinzel Decorative','IM Fell English','Playfair Display',
-  'Cormorant Garamond','Libre Baskerville','EB Garamond',
-  'Oswald','Merriweather','Dancing Script','Georgia',
+  'Cinzel','Cinzel Decorative','Abril Fatface','IM Fell English','Spectral',
+  'Playfair Display','Cormorant Garamond','Libre Baskerville','EB Garamond',
+  'Oswald','Exo 2','Merriweather','Dancing Script','Georgia',
 ];
 
 const EXPORT_FORMATS = [
-  { id:'ebook',   name:'KDP Ebook',    dims:'1600 × 2560', w:1600, h:2560 },
-  { id:'print69', name:'6×9 Print',    dims:'1875 × 2775', w:1875, h:2775 },
-  { id:'print55', name:'5.5×8.5 Print',dims:'1725 × 2625', w:1725, h:2625 },
-  { id:'square',  name:'Audiobook',    dims:'3000 × 3000', w:3000, h:3000 },
+  { id:'ebook',    name:'KDP Ebook',      dims:'1600 × 2560',  w:1600, h:2560,  wrap:false },
+  { id:'print69',  name:'6×9 Front Only', dims:'1875 × 2775',  w:1875, h:2775,  wrap:false },
+  { id:'wrap69',   name:'6×9 Full Wrap',  dims:'front+spine+back', w:0, h:2775, wrap:true, trimW:6, trimH:9 },
+  { id:'wrap55',   name:'5.5×8.5 Wrap',   dims:'front+spine+back', w:0, h:2625, wrap:true, trimW:5.5, trimH:8.5 },
+  { id:'square',   name:'Audiobook',      dims:'3000 × 3000',  w:3000, h:3000,  wrap:false },
 ];
+
+// KDP spine thickness per page (inches)
+const PAPER_THICKNESS = { white:0.002252, cream:0.0025, color:0.002347 };
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 const state = {
@@ -683,11 +848,23 @@ function renderExportButtons() {
       <div class="fmt-size">${f.dims}</div>
     </div>
   `).join('');
+  const fmt = EXPORT_FORMATS.find(f=>f.id===state.exportFormat);
+  document.getElementById('wrapOptions').style.display = fmt?.wrap ? 'block' : 'none';
+  if (fmt?.wrap) updateSpineLabel();
 }
 
 function selectFormat(id) {
   state.exportFormat = id;
   renderExportButtons();
+}
+
+function updateSpineLabel() {
+  const pages = +document.getElementById('pageCount').value || 300;
+  const paper = document.getElementById('paperType').value;
+  const thick = PAPER_THICKNESS[paper] || PAPER_THICKNESS.white;
+  const spineIn = (pages * thick).toFixed(3);
+  const spinePx = Math.round(pages * thick * 300);
+  document.getElementById('spineLabel').textContent = `Spine: ${spineIn}" = ${spinePx}px at 300 DPI`;
 }
 
 function curEl() { return state.elements.find(e => e.id === state.selected); }
@@ -746,6 +923,24 @@ dz.addEventListener('drop', e => {
 
 function handleFile(inp) { if (inp.files[0]) loadImg(inp.files[0]); }
 
+function loadFromUrl() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return;
+  document.getElementById('urlError').style.display = 'none';
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    state.bgImage = img;
+    dz.classList.add('has-image');
+    document.getElementById('dropLabel').innerHTML = `✓ Image loaded from URL<br><small>Tap to replace</small>`;
+    render();
+  };
+  img.onerror = () => {
+    document.getElementById('urlError').style.display = 'block';
+  };
+  img.src = url;
+}
+
 function loadImg(file) {
   const reader = new FileReader();
   reader.onload = e => {
@@ -762,13 +957,7 @@ function loadImg(file) {
 }
 
 // ─── EXPORT ───────────────────────────────────────────────────────────────────
-function exportCover() {
-  const fmt = EXPORT_FORMATS.find(f => f.id === state.exportFormat);
-  const W = fmt.w, H = fmt.h;
-
-  const off = Object.assign(document.createElement('canvas'), {width:W, height:H});
-  const oc = off.getContext('2d');
-
+function renderFrontOnto(oc, W, H) {
   oc.fillStyle = '#16120a';
   oc.fillRect(0, 0, W, H);
   if (state.bgImage) drawBg(oc, state.bgImage, W, H, state.bgPos);
@@ -777,9 +966,88 @@ function exportCover() {
   for (const el of state.elements) {
     if (el.text) drawTextEl(oc, el, W, H);
   }
+}
 
+function exportCover() {
+  const fmt = EXPORT_FORMATS.find(f => f.id === state.exportFormat);
+
+  if (fmt.wrap) {
+    exportFullWrap(fmt);
+    return;
+  }
+
+  const W = fmt.w, H = fmt.h;
+  const off = Object.assign(document.createElement('canvas'), {width:W, height:H});
+  renderFrontOnto(off.getContext('2d'), W, H);
   const a = document.createElement('a');
   a.download = `cover-${state.genre}-${fmt.id}.png`;
+  a.href = off.toDataURL('image/png');
+  a.click();
+}
+
+function exportFullWrap(fmt) {
+  const pages  = +document.getElementById('pageCount').value || 300;
+  const paper  = document.getElementById('paperType').value;
+  const DPI    = 300;
+  const BLEED  = 0.125; // inches
+
+  const spineIn  = pages * (PAPER_THICKNESS[paper] || PAPER_THICKNESS.white);
+  const spinePx  = Math.round(spineIn * DPI);
+  const frontW   = Math.round((fmt.trimW + BLEED) * DPI);   // front + outer bleed
+  const backW    = frontW;                                    // same
+  const totalW   = backW + spinePx + frontW;
+  const totalH   = fmt.h; // already includes top+bottom bleed
+
+  const off = Object.assign(document.createElement('canvas'), {width:totalW, height:totalH});
+  const oc  = off.getContext('2d');
+
+  // ── BACK COVER (left section) ──
+  const g = GENRES[state.genre];
+  oc.fillStyle = g.spineColor || '#111';
+  oc.fillRect(0, 0, backW, totalH);
+  // subtle blurred image bleed onto back if we have one
+  if (state.bgImage) {
+    oc.save();
+    oc.globalAlpha = 0.18;
+    drawBg(oc, state.bgImage, backW, totalH, 'center');
+    oc.restore();
+  }
+
+  // ── SPINE (middle section) ──
+  const sx = backW;
+  oc.fillStyle = g.spineColor || '#111';
+  oc.fillRect(sx, 0, spinePx, totalH);
+  if (spinePx > 60) {
+    // Draw title + author rotated on spine
+    oc.save();
+    oc.translate(sx + spinePx / 2, totalH / 2);
+    oc.rotate(-Math.PI / 2);
+    const titleEl = state.elements.find(e=>e.id==='title');
+    const authorEl = state.elements.find(e=>e.id==='author');
+    const spineFs  = Math.min(spinePx * 0.55, 36);
+    oc.textAlign = 'center';
+    oc.textBaseline = 'middle';
+    if (titleEl?.text) {
+      oc.font = `${titleEl.weight} ${spineFs}px '${titleEl.font}'`;
+      oc.fillStyle = titleEl.color;
+      oc.shadowColor = 'rgba(0,0,0,0.8)'; oc.shadowBlur = 4;
+      oc.fillText(titleEl.text, -totalH * 0.08, 0);
+    }
+    if (authorEl?.text) {
+      oc.font = `${Math.round(spineFs * 0.65)}px '${authorEl.font}'`;
+      oc.fillStyle = authorEl.color;
+      oc.fillText(authorEl.text, totalH * 0.3, 0);
+    }
+    oc.restore();
+  }
+
+  // ── FRONT COVER (right section) ──
+  const frontOff = Object.assign(document.createElement('canvas'), {width:frontW, height:totalH});
+  renderFrontOnto(frontOff.getContext('2d'), frontW, totalH);
+  oc.drawImage(frontOff, sx + spinePx, 0);
+
+  const a = document.createElement('a');
+  a.download = `cover-wrap-${state.genre}-${fmt.id}.png`;
   a.href = off.toDataURL('image/png');
   a.click();
 }
@@ -815,6 +1083,66 @@ const GENRE_PROMPTS = {
     mood: 'aged parchment and sepia tones, warm candlelight, solemn and dignified, sense of history and gravitas, colonial era',
     subjects: 'founding fathers, colonial architecture, quill and parchment, American flag, Liberty Bell, Independence Hall, eagle',
     negative: 'modern elements, bright colors, text, watermarks',
+  },
+  thriller: {
+    style: 'high contrast cinematic photography or stark graphic illustration',
+    mood: 'dark and tension-filled, deep shadows, single dramatic light source, sense of dread and urgency, desaturated with red accents',
+    subjects: 'silhouette in darkness, rain-slicked city streets, shadowy figure, gun or weapon detail, locked door, surveillance camera, isolated figure',
+    negative: 'bright cheerful colors, cartoonish style, text, watermarks',
+  },
+  fantasy: {
+    style: 'epic fantasy digital painting or oil illustration',
+    mood: 'magical and otherworldly, deep purples and golds, sweeping dramatic lighting, sense of ancient power and wonder',
+    subjects: 'dragon soaring over castle, enchanted forest, glowing runes, warrior with magical weapon, dark lord, epic mountain landscape, mystical portal',
+    negative: 'modern technology, text, watermarks',
+  },
+  scifi: {
+    style: 'science fiction digital art, cinematic concept art',
+    mood: 'vast and cosmic, cool blues and silvers, neon accents, sleek and technological, sense of awe and the unknown',
+    subjects: 'spaceship in orbit, alien planet surface, futuristic cityscape, astronaut, star field, wormhole, alien creature, robotic figure, space battle',
+    negative: 'fantasy elements, medieval objects, text, watermarks',
+  },
+  mystery: {
+    style: 'noir photography or moody illustration',
+    mood: 'shadowy and atmospheric, foggy night, single lamp post light, sense of secrets and hidden danger, vintage or contemporary noir',
+    subjects: 'rain-soaked street at night, detective silhouette, old mansion, crime scene detail, locked room, mysterious letter, vintage car, foggy harbor',
+    negative: 'bright sunny scenes, text, watermarks',
+  },
+  western: {
+    style: 'dramatic western landscape photography or painterly illustration',
+    mood: 'vast open frontier, golden dust and sunset reds, rugged and weathered, sense of danger and solitude, American West',
+    subjects: 'lone rider on horseback at sunset, desert canyon, saloon at dusk, cowboy silhouette, cattle drive, old revolver, frontier town, dusty trail',
+    negative: 'modern vehicles, urban settings, text, watermarks',
+  },
+  literary: {
+    style: 'minimalist artistic photography or abstract illustration',
+    mood: 'contemplative and quiet, muted tones, emotionally resonant, artistic and thoughtful, sophisticated',
+    subjects: 'lone figure in landscape, open window with light, hands holding objects, blurred motion, reflections in water, empty road, intimate domestic scene',
+    negative: 'cluttered busy scenes, bright cartoonish colors, text, watermarks',
+  },
+  ya: {
+    style: 'vibrant digital illustration or stylized photography',
+    mood: 'energetic and emotionally intense, deep saturated colors with neon accents, sense of coming transformation and identity',
+    subjects: 'teen protagonist in dramatic pose, magical transformation, friendship or conflict, fantastical setting, school or forest at magic hour',
+    negative: 'adult themes, dull muted colors, text, watermarks',
+  },
+  memoir: {
+    style: 'intimate personal photography or warm painterly illustration',
+    mood: 'warm nostalgic tones, emotionally intimate, personal and human, quiet dignity, sense of life lived',
+    subjects: 'hands holding objects of significance, childhood home, personal photographs aesthetic, solitary figure in familiar place, family gathering, open road',
+    negative: 'stock photo feel, impersonal imagery, text, watermarks',
+  },
+  selfhelp: {
+    style: 'clean modern photography or bold graphic design',
+    mood: 'bright and confident, clean lines, aspirational energy, professional and trustworthy, sense of upward movement',
+    subjects: 'person on mountain summit, open road ahead, sunrise over city, person in confident pose, clean desk with light, upward staircase, open door to light',
+    negative: 'cluttered busy scenes, negative imagery, text, watermarks',
+  },
+  military: {
+    style: 'gritty documentary photography or dramatic military illustration',
+    mood: 'dark olive and gunmetal tones, smoke and dust, intense and somber, weight of sacrifice and duty, raw and powerful',
+    subjects: 'soldier in silhouette, battlefield landscape, military aircraft, tank in mist, flags and medals, bombed ruins, troops in formation, wartime memorial',
+    negative: 'cartoonish or glorified violence, bright colors, text, watermarks',
   },
 };
 

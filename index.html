@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cover Maker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=IM+Fell+English:ital@0;1&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Oswald:wght@400;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #111;
+  --surface: #1c1c1c;
+  --surface2: #242424;
+  --border: #333;
+  --accent: #c9a84c;
+  --accent2: #b5903e;
+  --text: #e8e0d0;
+  --muted: #777;
+}
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; }
+
+/* ── HEADER ── */
+.header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.header h1 { font-size: 0.95rem; color: var(--accent); letter-spacing: 0.06em; flex: 1; }
+.genre-pill {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 5px 12px; border-radius: 20px;
+  font-size: 0.78rem; cursor: pointer; white-space: nowrap;
+}
+
+/* ── LAYOUT ── */
+.app { display: flex; flex-direction: column; height: calc(100dvh - 45px); }
+
+.canvas-area {
+  flex: 1; min-height: 0; display: flex; align-items: center;
+  justify-content: center; padding: 10px; background: #0d0d0d;
+  position: relative;
+}
+#mainCanvas {
+  max-width: 100%; max-height: 100%;
+  box-shadow: 0 6px 40px rgba(0,0,0,0.7);
+  cursor: crosshair; touch-action: none;
+}
+.canvas-hint {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  font-size: 0.7rem; color: rgba(255,255,255,0.25); pointer-events: none;
+  white-space: nowrap;
+}
+
+.panel {
+  background: var(--surface); border-top: 1px solid var(--border);
+  height: 260px; min-height: 260px; display: flex; flex-direction: column; flex-shrink: 0;
+}
+
+/* ── TABS ── */
+.tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.tab {
+  flex: 1; padding: 9px 4px; background: none; border: none;
+  color: var(--muted); font-size: 0.7rem; letter-spacing: 0.08em;
+  text-transform: uppercase; cursor: pointer; border-bottom: 2px solid transparent;
+}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab-content { display: none; flex: 1; overflow-y: auto; padding: 12px 14px; }
+.tab-content.active { display: block; }
+
+/* ── FORM ── */
+.field { margin-bottom: 10px; }
+.field label { display: block; font-size: 0.67rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+.field input[type=text],
+.field input[type=number],
+.field select {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); padding: 7px 9px; border-radius: 4px;
+  font-size: 0.88rem; font-family: inherit; appearance: none;
+}
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+.field input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+.field input[type=color] {
+  width: 40px; height: 30px; padding: 2px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 4px; background: none;
+}
+.row { display: flex; gap: 8px; }
+.row .field { flex: 1; }
+
+.btn {
+  padding: 9px 14px; border: none; border-radius: 4px;
+  font-family: inherit; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; letter-spacing: 0.04em;
+}
+.btn-primary { background: var(--accent); color: #111; }
+.btn-primary:active { background: var(--accent2); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-full { width: 100%; display: block; }
+
+/* ── ELEMENT CHIPS ── */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.chip {
+  padding: 5px 11px; border-radius: 14px; font-size: 0.75rem;
+  cursor: pointer; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--muted);
+}
+.chip.active { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 700; }
+
+/* ── DROP ZONE ── */
+.drop-zone {
+  border: 2px dashed var(--border); border-radius: 6px; padding: 16px;
+  text-align: center; color: var(--muted); font-size: 0.82rem;
+  cursor: pointer; margin-bottom: 10px; line-height: 1.6;
+}
+.drop-zone.has-image { border-color: var(--accent); color: var(--accent); }
+.drop-zone:hover { border-color: #555; }
+
+/* ── GENRE MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  z-index: 200; display: none; align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px 12px 0 0; padding: 20px 16px 32px;
+  width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto;
+}
+.modal h2 { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px; }
+.genre-opt {
+  padding: 12px 14px; border-radius: 6px; cursor: pointer;
+  margin-bottom: 6px; border: 1px solid var(--border); background: var(--surface2);
+}
+.genre-opt.active { border-color: var(--accent); background: rgba(201,168,76,0.07); }
+.genre-opt .gname { font-size: 0.92rem; font-weight: 600; }
+.genre-opt .gsub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+/* ── EXPORT FORMAT BUTTONS ── */
+.format-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.format-btn {
+  padding: 10px; border: 1px solid var(--border); background: var(--surface2);
+  border-radius: 6px; cursor: pointer; text-align: center; color: var(--text);
+}
+.format-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(201,168,76,0.07); }
+.format-btn .fmt-name { font-size: 0.8rem; font-weight: 700; }
+.format-btn .fmt-size { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+
+/* ── DESKTOP ── */
+@media (min-width: 680px) {
+  .app { flex-direction: row; }
+  .canvas-area { flex: 1; }
+  .panel {
+    width: 300px; min-width: 300px; height: auto; min-height: 0;
+    border-top: none; border-left: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .modal-overlay { align-items: center; }
+  .modal { border-radius: 12px; max-width: 380px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Cover Maker</h1>
+  <button class="genre-pill" id="genrePill" onclick="openGenreModal()">Genre ›</button>
+</div>
+
+<div class="app">
+  <div class="canvas-area">
+    <canvas id="mainCanvas" width="400" height="640"></canvas>
+    <div class="canvas-hint">Tap text to select · Drag to reposition</div>
+  </div>
+
+  <div class="panel">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('image',this)">Image</button>
+      <button class="tab" onclick="switchTab('text',this)">Text</button>
+      <button class="tab" onclick="switchTab('style',this)">Style</button>
+      <button class="tab" onclick="switchTab('export',this)">Export</button>
+    </div>
+
+    <!-- IMAGE TAB -->
+    <div class="tab-content active" id="tab-image">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileIn').click()">
+        <div id="dropLabel">Tap to upload image<br><small>JPG or PNG · drag &amp; drop also works</small></div>
+      </div>
+      <input type="file" id="fileIn" accept="image/*" style="display:none" onchange="handleFile(this)">
+      <div class="field">
+        <label>Image Framing</label>
+        <select onchange="state.bgPos=this.value;render()">
+          <option value="center">Center (default)</option>
+          <option value="top">Anchor Top</option>
+          <option value="bottom">Anchor Bottom</option>
+          <option value="upper">Upper (figure / face)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Dark Overlay — <span id="overlayPct">30</span>%</label>
+        <input type="range" min="0" max="80" value="30" oninput="state.overlay=+this.value;document.getElementById('overlayPct').textContent=this.value;render()">
+      </div>
+    </div>
+
+    <!-- TEXT TAB -->
+    <div class="tab-content" id="tab-text">
+      <div class="chips" id="textChips"></div>
+      <div id="textFields"></div>
+    </div>
+
+    <!-- STYLE TAB -->
+    <div class="tab-content" id="tab-style">
+      <div class="chips" id="styleChips"></div>
+      <div id="styleFields"></div>
+    </div>
+
+    <!-- EXPORT TAB -->
+    <div class="tab-content" id="tab-export">
+      <div class="field"><label>Format</label></div>
+      <div class="format-grid" id="formatGrid"></div>
+      <button class="btn btn-primary btn-full" onclick="exportCover()">⬇ Download Cover PNG</button>
+      <p style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:8px;">Full resolution · ready for KDP upload</p>
+    </div>
+  </div>
+</div>
+
+<!-- GENRE MODAL -->
+<div class="modal-overlay" id="genreModal" onclick="handleModalClick(event)">
+  <div class="modal">
+    <h2>Select Genre</h2>
+    <div id="genreList"></div>
+    <button class="btn btn-secondary btn-full" style="margin-top:10px" onclick="closeGenreModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ─── GENRES ───────────────────────────────────────────────────────────────────
+const GENRES = {
+  historical: {
+    name: 'Historical Fiction',
+    sub: 'Napoleonic Era',
+    elStyles: {
+      series:   { font:'IM Fell English', weight:'400', style:'italic',  color:'#D4B878', size:0.027, spacing:'0.1em',  sy:0.10 },
+      title:    { font:'Cinzel',          weight:'700', style:'normal',  color:'#C9A84C', size:0.080, spacing:'0.15em', sy:0.18 },
+      subtitle: { font:'IM Fell English', weight:'400', style:'italic',  color:'#E8DCC8', size:0.033, spacing:'0.04em', sy:0.28 },
+      author:   { font:'Cinzel',          weight:'400', style:'normal',  color:'#C9A84C', size:0.036, spacing:'0.2em',  sy:0.90 },
+    },
+    shadow: { color:'rgba(0,0,0,0.88)', blur:9,  x:2, y:3 },
+    stroke: { color:null, width:0 },
+    overlay: 30,
+  },
+  christian: {
+    name: 'Christian',
+    sub: 'Faith & Spiritual',
+    elStyles: {
+      series:   { font:'Cormorant Garamond', weight:'400', style:'italic', color:'#C9B99A', size:0.025, spacing:'0.1em',  sy:0.10 },
+      title:    { font:'Cormorant Garamond', weight:'600', style:'normal', color:'#FFFFFF', size:0.076, spacing:'0.06em', sy:0.18 },
+      subtitle: { font:'Cormorant Garamond', weight:'400', style:'italic', color:'#E0D4C0', size:0.031, spacing:'0.04em', sy:0.28 },
+      author:   { font:'Libre Baskerville', weight:'400', style:'normal', color:'#C9B99A', size:0.033, spacing:'0.1em',  sy:0.89 },
+    },
+    shadow: { color:'rgba(0,0,0,0.65)', blur:7,  x:1, y:2 },
+    stroke: { color:null, width:0 },
+    overlay: 22,
+  },
+  romance: {
+    name: 'Romance',
+    sub: 'Contemporary & Historical',
+    elStyles: {
+      series:   { font:'Playfair Display', weight:'400', style:'italic', color:'#E8C4A0', size:0.025, spacing:'0.08em', sy:0.08 },
+      title:    { font:'Playfair Display', weight:'700', style:'italic', color:'#F5E8D8', size:0.086, spacing:'0.03em', sy:0.14 },
+      subtitle: { font:'Playfair Display', weight:'400', style:'italic', color:'#E8C4A0', size:0.032, spacing:'0.04em', sy:0.25 },
+      author:   { font:'Playfair Display', weight:'400', style:'normal', color:'#F5E8D8', size:0.034, spacing:'0.15em', sy:0.91 },
+    },
+    shadow: { color:'rgba(50,5,5,0.8)',   blur:12, x:2, y:2 },
+    stroke: { color:null, width:0 },
+    overlay: 24,
+  },
+  nonfiction: {
+    name: 'Non-Fiction / History',
+    sub: 'Narrative & Analytical',
+    elStyles: {
+      series:   { font:'Oswald',       weight:'400', style:'normal', color:'#BBBBBB', size:0.024, spacing:'0.1em',  sy:0.09 },
+      title:    { font:'Oswald',       weight:'700', style:'normal', color:'#FFFFFF', size:0.090, spacing:'0.08em', sy:0.15 },
+      subtitle: { font:'Merriweather', weight:'400', style:'normal', color:'#CCCCCC', size:0.030, spacing:'0.02em', sy:0.27 },
+      author:   { font:'Merriweather', weight:'400', style:'normal', color:'#FFFFFF', size:0.031, spacing:'0.08em', sy:0.90 },
+    },
+    shadow: { color:'rgba(0,0,0,0.92)', blur:4,  x:3, y:3 },
+    stroke: { color:null, width:0 },
+    overlay: 42,
+  },
+  constitution: {
+    name: 'Constitution / Founding',
+    sub: 'American History & Law',
+    elStyles: {
+      series:   { font:'EB Garamond',        weight:'400', style:'italic', color:'#8B7355', size:0.024, spacing:'0.1em',  sy:0.10 },
+      title:    { font:'Cinzel Decorative',  weight:'700', style:'normal', color:'#C9A84C', size:0.066, spacing:'0.06em', sy:0.18 },
+      subtitle: { font:'EB Garamond',        weight:'400', style:'italic', color:'#8B7355', size:0.029, spacing:'0.04em', sy:0.27 },
+      author:   { font:'EB Garamond',        weight:'400', style:'normal', color:'#8B7355', size:0.030, spacing:'0.15em', sy:0.90 },
+    },
+    shadow: { color:'rgba(0,0,0,0.72)', blur:6,  x:2, y:2 },
+    stroke: { color:'#6B5B2E', width:1 },
+    overlay: 35,
+  },
+};
+
+const ALL_FONTS = [
+  'Cinzel','Cinzel Decorative','IM Fell English','Playfair Display',
+  'Cormorant Garamond','Libre Baskerville','EB Garamond',
+  'Oswald','Merriweather','Dancing Script','Georgia',
+];
+
+const EXPORT_FORMATS = [
+  { id:'ebook',   name:'KDP Ebook',    dims:'1600 × 2560', w:1600, h:2560 },
+  { id:'print69', name:'6×9 Print',    dims:'1875 × 2775', w:1875, h:2775 },
+  { id:'print55', name:'5.5×8.5 Print',dims:'1725 × 2625', w:1725, h:2625 },
+  { id:'square',  name:'Audiobook',    dims:'3000 × 3000', w:3000, h:3000 },
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const state = {
+  genre: 'historical',
+  bgImage: null,
+  bgPos: 'center',
+  overlay: 30,
+  selected: 'title',
+  exportFormat: 'ebook',
+  elements: [],
+};
+
+function makeElements(genreKey) {
+  const g = GENRES[genreKey];
+  return ['series','title','subtitle','author'].map(id => {
+    const s = g.elStyles[id];
+    const labels = { series:'Series', title:'Title', subtitle:'Subtitle', author:'Author' };
+    const defaults = { series:'', title:'Your Title', subtitle:'', author:'Author Name' };
+    return {
+      id, label: labels[id], text: defaults[id],
+      x: 0.5, y: s.sy,
+      font: s.font, weight: s.weight, style: s.style,
+      color: s.color, size: s.size, spacing: s.spacing,
+      shadow: { ...g.shadow }, stroke: { ...g.stroke },
+    };
+  });
+}
+
+// ─── CANVAS ──────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d');
+const CW = 400, CH = 640;
+
+function render() {
+  ctx.clearRect(0, 0, CW, CH);
+  ctx.fillStyle = '#16120a';
+  ctx.fillRect(0, 0, CW, CH);
+
+  if (state.bgImage) drawBg(ctx, state.bgImage, CW, CH, state.bgPos);
+
+  ctx.fillStyle = `rgba(0,0,0,${state.overlay/100})`;
+  ctx.fillRect(0, 0, CW, CH);
+
+  for (const el of state.elements) {
+    if (el.text) drawTextEl(ctx, el, CW, CH);
+  }
+
+  // Selection guide line
+  const sel = state.elements.find(e => e.id === state.selected);
+  if (sel && sel.text) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(201,168,76,0.45)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3,5]);
+    ctx.beginPath();
+    ctx.moveTo(sel.x * CW - 80, sel.y * CH);
+    ctx.lineTo(sel.x * CW + 80, sel.y * CH);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawBg(c, img, W, H, pos) {
+  const ir = img.width / img.height;
+  const cr = W / H;
+  let sw, sh, sx, sy;
+  if (ir > cr) {
+    sh = H; sw = H * ir; sx = (W - sw) / 2;
+    sy = pos === 'top' ? 0 : pos === 'bottom' ? H - sh : (H - sh) / 2;
+  } else {
+    sw = W; sh = W / ir; sx = 0;
+    if (pos === 'top' || pos === 'upper') sy = pos === 'upper' ? -sh * 0.08 : 0;
+    else if (pos === 'bottom') sy = H - sh;
+    else sy = (H - sh) / 2;
+  }
+  c.drawImage(img, sx, sy, sw, sh);
+}
+
+function buildFont(el, size) {
+  const parts = [];
+  if (el.style && el.style !== 'normal') parts.push(el.style);
+  parts.push(el.weight || '400');
+  parts.push(size + 'px');
+  parts.push(`'${el.font}'`);
+  return parts.join(' ');
+}
+
+function wrapLines(c, text, maxW) {
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const t = cur ? cur + ' ' + w : w;
+    if (cur && c.measureText(t).width > maxW) { lines.push(cur); cur = w; }
+    else cur = t;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function drawTextEl(c, el, W, H) {
+  const fs = el.size * H;
+  c.save();
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.font = buildFont(el, fs);
+  c.letterSpacing = el.spacing || '0em';
+
+  const lines = wrapLines(c, el.text, W * 0.88);
+  const lh = fs * 1.28;
+  const totalH = lines.length * lh;
+  const startY = el.y * H - totalH / 2 + lh / 2;
+
+  for (let i = 0; i < lines.length; i++) {
+    const lx = el.x * W;
+    const ly = startY + i * lh;
+
+    if (el.shadow && el.shadow.blur) {
+      c.shadowColor = el.shadow.color;
+      c.shadowBlur = el.shadow.blur;
+      c.shadowOffsetX = el.shadow.x;
+      c.shadowOffsetY = el.shadow.y;
+    }
+    if (el.stroke && el.stroke.width && el.stroke.color) {
+      c.strokeStyle = el.stroke.color;
+      c.lineWidth = el.stroke.width * 2;
+      c.lineJoin = 'round';
+      c.strokeText(lines[i], lx, ly);
+    }
+    c.fillStyle = el.color;
+    c.fillText(lines[i], lx, ly);
+  }
+  c.restore();
+}
+
+// ─── DRAG / TOUCH ────────────────────────────────────────────────────────────
+let dragging = false, dragEl = null;
+
+function canvasXY(e) {
+  const r = canvas.getBoundingClientRect();
+  const sx = CW / r.width, sy = CH / r.height;
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x:(cx-r.left)*sx, y:(cy-r.top)*sy };
+}
+
+function hitEl(x, y) {
+  for (let i = state.elements.length - 1; i >= 0; i--) {
+    const el = state.elements[i];
+    if (!el.text) continue;
+    const hitH = el.size * CH * 1.8;
+    if (Math.abs(x - el.x * CW) < CW * 0.45 && Math.abs(y - el.y * CH) < hitH) return el;
+  }
+  return null;
+}
+
+canvas.addEventListener('mousedown', e => {
+  const p = canvasXY(e);
+  const hit = hitEl(p.x, p.y);
+  if (hit) { dragging = true; dragEl = hit; selectEl(hit.id); }
+});
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const p = canvasXY(e);
+  const hit = hitEl(p.x, p.y);
+  if (hit) { dragging = true; dragEl = hit; selectEl(hit.id); }
+}, { passive:false });
+
+canvas.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const p = canvasXY(e);
+  dragEl.x = Math.max(0.05, Math.min(0.95, p.x / CW));
+  dragEl.y = Math.max(0.02, Math.min(0.98, p.y / CH));
+  render(); syncYInput();
+});
+canvas.addEventListener('touchmove', e => {
+  if (!dragging) return;
+  e.preventDefault();
+  const p = canvasXY(e);
+  dragEl.x = Math.max(0.05, Math.min(0.95, p.x / CW));
+  dragEl.y = Math.max(0.02, Math.min(0.98, p.y / CH));
+  render(); syncYInput();
+}, { passive:false });
+
+window.addEventListener('mouseup', () => { dragging = false; dragEl = null; });
+window.addEventListener('touchend', () => { dragging = false; dragEl = null; });
+
+function syncYInput() {
+  const inp = document.getElementById('elY');
+  if (inp && dragEl) inp.value = Math.round(dragEl.y * 100);
+}
+
+// ─── UI RENDERING ────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+function selectEl(id) {
+  state.selected = id;
+  renderChips('textChips');
+  renderChips('styleChips');
+  renderTextFields();
+  renderStyleFields();
+  render();
+}
+
+function renderChips(containerId) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = state.elements.map(el =>
+    `<div class="chip ${el.id===state.selected?'active':''}" onclick="selectEl('${el.id}')">${el.label}</div>`
+  ).join('');
+}
+
+function renderTextFields() {
+  const el = curEl();
+  if (!el) return;
+  document.getElementById('textFields').innerHTML = `
+    <div class="field">
+      <label>${el.label} Text</label>
+      <input type="text" value="${el.text.replace(/"/g,'&quot;')}" oninput="curEl().text=this.value;render()" placeholder="Leave blank to hide">
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Vertical %</label>
+        <input type="number" id="elY" min="2" max="98" value="${Math.round(el.y*100)}"
+          oninput="curEl().y=this.value/100;render()">
+      </div>
+      <div class="field">
+        <label>Horizontal %</label>
+        <input type="number" min="5" max="95" value="${Math.round(el.x*100)}"
+          oninput="curEl().x=this.value/100;render()">
+      </div>
+    </div>
+  `;
+}
+
+function renderStyleFields() {
+  const el = curEl();
+  if (!el) return;
+  document.getElementById('styleFields').innerHTML = `
+    <div class="field">
+      <label>Font</label>
+      <select onchange="curEl().font=this.value;render()">
+        ${ALL_FONTS.map(f=>`<option value="${f}" ${el.font===f?'selected':''}>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Weight</label>
+        <select onchange="curEl().weight=this.value;render()">
+          ${['300','400','600','700','900'].map(w=>`<option ${el.weight===w?'selected':''}>${w}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>Style</label>
+        <select onchange="curEl().style=this.value;render()">
+          ${['normal','italic'].map(s=>`<option ${el.style===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Size</label>
+        <input type="range" min="1" max="16" step="0.5" value="${(el.size*100).toFixed(1)}"
+          oninput="curEl().size=this.value/100;render()">
+      </div>
+      <div class="field" style="flex:0 0 auto">
+        <label>Color</label>
+        <input type="color" value="${el.color}" oninput="curEl().color=this.value;render()">
+      </div>
+    </div>
+    <div class="field">
+      <label>Letter Spacing</label>
+      <select onchange="curEl().spacing=this.value;render()">
+        ${['-0.02em','0em','0.04em','0.08em','0.12em','0.18em','0.25em','0.35em'].map(s=>
+          `<option value="${s}" ${el.spacing===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Shadow Blur</label>
+        <input type="range" min="0" max="24" value="${el.shadow.blur}"
+          oninput="curEl().shadow.blur=+this.value;render()">
+      </div>
+      <div class="field" style="flex:0 0 auto">
+        <label>Shadow Color</label>
+        <input type="color" value="${rgba2hex(el.shadow.color)}"
+          oninput="curEl().shadow.color=this.value;render()">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Outline Width</label>
+        <input type="number" min="0" max="8" value="${el.stroke.width}"
+          oninput="curEl().stroke.width=+this.value;render()">
+      </div>
+      <div class="field" style="flex:0 0 auto">
+        <label>Outline Color</label>
+        <input type="color" value="${el.stroke.color||'#000000'}"
+          oninput="curEl().stroke.color=this.value;render()">
+      </div>
+    </div>
+  `;
+}
+
+function renderExportButtons() {
+  document.getElementById('formatGrid').innerHTML = EXPORT_FORMATS.map(f => `
+    <div class="format-btn ${state.exportFormat===f.id?'active':''}" onclick="selectFormat('${f.id}')">
+      <div class="fmt-name">${f.name}</div>
+      <div class="fmt-size">${f.dims}</div>
+    </div>
+  `).join('');
+}
+
+function selectFormat(id) {
+  state.exportFormat = id;
+  renderExportButtons();
+}
+
+function curEl() { return state.elements.find(e => e.id === state.selected); }
+
+function rgba2hex(c) {
+  if (!c) return '#000000';
+  if (c.startsWith('#')) return c;
+  const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!m) return '#000000';
+  return '#' + [m[1],m[2],m[3]].map(n => (+n).toString(16).padStart(2,'0')).join('');
+}
+
+// ─── GENRE MODAL ─────────────────────────────────────────────────────────────
+function openGenreModal() {
+  document.getElementById('genreList').innerHTML = Object.entries(GENRES).map(([k,g]) => `
+    <div class="genre-opt ${state.genre===k?'active':''}" onclick="applyGenre('${k}')">
+      <div class="gname">${g.name}</div>
+      <div class="gsub">${g.sub}</div>
+    </div>
+  `).join('');
+  document.getElementById('genreModal').classList.add('open');
+}
+function closeGenreModal() { document.getElementById('genreModal').classList.remove('open'); }
+function handleModalClick(e) { if (e.target === document.getElementById('genreModal')) closeGenreModal(); }
+
+function applyGenre(key) {
+  state.genre = key;
+  const g = GENRES[key];
+  // Preserve user-typed text, update styles and positions
+  const fresh = makeElements(key);
+  for (const f of fresh) {
+    const el = state.elements.find(e => e.id === f.id);
+    if (el) {
+      Object.assign(el, { font:f.font, weight:f.weight, style:f.style,
+        color:f.color, size:f.size, spacing:f.spacing,
+        shadow:{...f.shadow}, stroke:{...f.stroke}, y:f.y });
+    }
+  }
+  state.overlay = g.overlay;
+  document.getElementById('genrePill').textContent = g.name + ' ›';
+  closeGenreModal();
+  renderTextFields();
+  renderStyleFields();
+  render();
+}
+
+// ─── IMAGE UPLOAD ─────────────────────────────────────────────────────────────
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('has-image'); });
+dz.addEventListener('dragleave', () => { if (!state.bgImage) dz.classList.remove('has-image'); });
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if (f) loadImg(f);
+});
+
+function handleFile(inp) { if (inp.files[0]) loadImg(inp.files[0]); }
+
+function loadImg(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      state.bgImage = img;
+      dz.classList.add('has-image');
+      document.getElementById('dropLabel').innerHTML = `✓ ${file.name}<br><small>Tap to replace</small>`;
+      render();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────────────────────
+function exportCover() {
+  const fmt = EXPORT_FORMATS.find(f => f.id === state.exportFormat);
+  const W = fmt.w, H = fmt.h;
+
+  const off = Object.assign(document.createElement('canvas'), {width:W, height:H});
+  const oc = off.getContext('2d');
+
+  oc.fillStyle = '#16120a';
+  oc.fillRect(0, 0, W, H);
+  if (state.bgImage) drawBg(oc, state.bgImage, W, H, state.bgPos);
+  oc.fillStyle = `rgba(0,0,0,${state.overlay/100})`;
+  oc.fillRect(0, 0, W, H);
+  for (const el of state.elements) {
+    if (el.text) drawTextEl(oc, el, W, H);
+  }
+
+  const a = document.createElement('a');
+  a.download = `cover-${state.genre}-${fmt.id}.png`;
+  a.href = off.toDataURL('image/png');
+  a.click();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init() {
+  state.elements = makeElements(state.genre);
+  const g = GENRES[state.genre];
+  document.getElementById('genrePill').textContent = g.name + ' ›';
+  renderChips('textChips');
+  renderChips('styleChips');
+  renderTextFields();
+  renderStyleFields();
+  renderExportButtons();
+  document.fonts.ready.then(render);
+}
+
+init();
+</script>
+</body>
+</html>

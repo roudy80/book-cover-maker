@@ -137,6 +137,24 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .genre-opt .gname { font-size: 0.92rem; font-weight: 600; }
 .genre-opt .gsub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
 
+/* ── GENERATE TAB ── */
+.prompt-box {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px; font-size: 0.78rem; line-height: 1.6;
+  color: var(--text); margin-bottom: 10px; min-height: 80px;
+  white-space: pre-wrap; word-break: break-word; user-select: all;
+}
+.prompt-box.empty { color: var(--muted); font-style: italic; }
+.service-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 10px; }
+.service-btn {
+  padding: 9px 6px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); cursor: pointer;
+  text-align: center; text-decoration: none; display: block;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;
+}
+.service-btn:hover { border-color: var(--accent); color: var(--accent); }
+.service-btn .svc-sub { font-size: 0.65rem; color: var(--muted); font-weight: 400; margin-top: 1px; }
+
 /* ── EXPORT FORMAT BUTTONS ── */
 .format-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 .format-btn {
@@ -177,6 +195,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
   <div class="panel">
     <div class="tabs">
       <button class="tab active" onclick="switchTab('image',this)">Image</button>
+      <button class="tab" onclick="switchTab('generate',this)">Generate</button>
       <button class="tab" onclick="switchTab('text',this)">Text</button>
       <button class="tab" onclick="switchTab('style',this)">Style</button>
       <button class="tab" onclick="switchTab('export',this)">Export</button>
@@ -201,6 +220,38 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
         <label>Dark Overlay — <span id="overlayPct">30</span>%</label>
         <input type="range" min="0" max="80" value="30" oninput="state.overlay=+this.value;document.getElementById('overlayPct').textContent=this.value;render()">
       </div>
+    </div>
+
+    <!-- GENERATE TAB -->
+    <div class="tab-content" id="tab-generate">
+      <div class="field">
+        <label>Describe your scene <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+        <input type="text" id="sceneInput" placeholder="e.g. naval battle at sunset, soldier on horseback" oninput="buildPrompt()">
+      </div>
+      <div class="field">
+        <label>Generated Prompt — tap to copy</label>
+        <div class="prompt-box empty" id="promptBox" onclick="copyPrompt()">Hit Generate to build your prompt</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="btn btn-primary" style="flex:1" onclick="buildPrompt()">Generate Prompt</button>
+        <button class="btn btn-secondary" onclick="copyPrompt()">Copy</button>
+      </div>
+      <div class="field"><label>Open prompt in</label></div>
+      <div class="service-grid">
+        <a class="service-btn" id="svc-ideogram" href="#" target="_blank" onclick="openService('ideogram')">
+          Ideogram<div class="svc-sub">Best for book covers</div>
+        </a>
+        <a class="service-btn" id="svc-firefly" href="#" target="_blank" onclick="openService('firefly')">
+          Adobe Firefly<div class="svc-sub">Free tier, polished</div>
+        </a>
+        <a class="service-btn" id="svc-leonardo" href="#" target="_blank" onclick="openService('leonardo')">
+          Leonardo.ai<div class="svc-sub">Free credits daily</div>
+        </a>
+        <a class="service-btn" id="svc-midjourney" href="#" target="_blank" onclick="openService('midjourney')">
+          Midjourney<div class="svc-sub">Highest quality</div>
+        </a>
+      </div>
+      <p style="font-size:0.67rem;color:var(--muted);line-height:1.5">Tip: prompt copies to clipboard when you open a service. Paste it into the generator, then upload the result to the Image tab.</p>
     </div>
 
     <!-- TEXT TAB -->
@@ -731,6 +782,102 @@ function exportCover() {
   a.download = `cover-${state.genre}-${fmt.id}.png`;
   a.href = off.toDataURL('image/png');
   a.click();
+}
+
+// ─── PROMPT GENERATOR ────────────────────────────────────────────────────────
+const GENRE_PROMPTS = {
+  historical: {
+    style: 'oil painting style, dramatic Napoleonic era historical scene',
+    mood: 'dark dramatic lighting, deep navy and gold color palette, cinematic atmosphere, smoke and fog, sense of grandeur and tension',
+    subjects: 'soldiers in Napoleonic uniforms, naval warships, European landscapes, period architecture, cavalry, battle scenes, candlelit interiors',
+    negative: 'modern elements, anachronistic details, text, watermarks',
+  },
+  christian: {
+    style: 'inspirational photography or painterly illustration',
+    mood: 'warm golden light, rays of divine light, hopeful and peaceful atmosphere, uplifting, serene',
+    subjects: 'open landscape at sunrise or sunset, cross silhouette, hands in prayer, open Bible, mountains, still water, dove, light breaking through clouds',
+    negative: 'dark or threatening imagery, text, watermarks',
+  },
+  romance: {
+    style: 'romantic illustration or stylized photography',
+    mood: 'warm amber and rose tones, soft bokeh background, intimate and emotional, elegant, longing or passion',
+    subjects: 'couple in period or contemporary clothing, romantic landscape at golden hour, flowers, ornate architecture, silhouettes embracing',
+    negative: 'explicit content, harsh lighting, text, watermarks',
+  },
+  nonfiction: {
+    style: 'dramatic documentary photography or bold graphic illustration',
+    mood: 'high contrast, strong shadows, authoritative and serious, bold visual impact',
+    subjects: 'historical monuments, archival-style imagery, maps, crowd scenes, powerful individual figures, symbolic objects',
+    negative: 'casual or cartoonish elements, text, watermarks',
+  },
+  constitution: {
+    style: 'classical American historical painting style',
+    mood: 'aged parchment and sepia tones, warm candlelight, solemn and dignified, sense of history and gravitas, colonial era',
+    subjects: 'founding fathers, colonial architecture, quill and parchment, American flag, Liberty Bell, Independence Hall, eagle',
+    negative: 'modern elements, bright colors, text, watermarks',
+  },
+};
+
+let lastPrompt = '';
+
+function buildPrompt() {
+  const g = GENRES[state.genre];
+  const gp = GENRE_PROMPTS[state.genre];
+  const title = state.elements.find(e=>e.id==='title')?.text || '';
+  const subtitle = state.elements.find(e=>e.id==='subtitle')?.text || '';
+  const scene = document.getElementById('sceneInput')?.value?.trim() || '';
+
+  const sceneClause = scene
+    ? scene
+    : `${title ? 'scene that evokes "' + title + '"' : 'evocative scene'}${subtitle ? ', ' + subtitle.toLowerCase() : ''}`;
+
+  const prompt = [
+    `Book cover background image, portrait orientation 2:3 ratio,`,
+    `${gp.style},`,
+    `${sceneClause},`,
+    `${gp.mood},`,
+    `professional composition with clear empty space at the top 25% and bottom 15% for title text overlay,`,
+    `no text no words no letters,`,
+    `ultra detailed, high resolution, professional book cover art,`,
+    `do not include any typography or text,`,
+    `negative: ${gp.negative}`,
+  ].join(' ');
+
+  lastPrompt = prompt;
+  const box = document.getElementById('promptBox');
+  box.textContent = prompt;
+  box.classList.remove('empty');
+}
+
+function copyPrompt() {
+  if (!lastPrompt) { buildPrompt(); }
+  if (!lastPrompt) return;
+  navigator.clipboard.writeText(lastPrompt).catch(() => {
+    const box = document.getElementById('promptBox');
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(box);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+  const box = document.getElementById('promptBox');
+  const orig = box.style.background;
+  box.style.background = 'rgba(201,168,76,0.15)';
+  setTimeout(() => box.style.background = orig, 400);
+}
+
+const SERVICE_URLS = {
+  ideogram:   'https://ideogram.ai/t/explore',
+  firefly:    'https://firefly.adobe.com/generate/images',
+  leonardo:   'https://app.leonardo.ai/',
+  midjourney: 'https://www.midjourney.com/imagine',
+};
+
+function openService(id) {
+  if (!lastPrompt) buildPrompt();
+  copyPrompt();
+  window.open(SERVICE_URLS[id], '_blank');
+  return false;
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
